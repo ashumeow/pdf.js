@@ -16,7 +16,7 @@
  */
 /* globals error, PDFJS, assert, info, shadow, TextRenderingMode,
            FONT_IDENTITY_MATRIX, Uint32ArrayView, IDENTITY_MATRIX, ImageData,
-           ImageKind, isArray, isNum, TilingPattern, OPS, Promise, Util, warn,
+           ImageKind, isArray, isNum, TilingPattern, OPS, Util, warn,
            getShadingPatternFromIR, WebGLUtils */
 
 'use strict';
@@ -26,6 +26,8 @@
 
 // Minimal font size that would be used during canvas fillText operations.
 var MIN_FONT_SIZE = 16;
+// Maximum font size that would be used during canvas fillText operations.
+var MAX_FONT_SIZE = 100;
 var MAX_GROUP_SIZE = 4096;
 
 var COMPILE_TYPE3_GLYPHS = true;
@@ -977,6 +979,26 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var x = current.x, y = current.y;
       for (var i = 0, j = 0, ii = ops.length; i < ii; i++) {
         switch (ops[i] | 0) {
+          case OPS.rectangle:
+            x = args[j++];
+            y = args[j++];
+            var width = args[j++];
+            var height = args[j++];
+            if (width === 0) {
+              width = this.getSinglePixelWidth();
+            }
+            if (height === 0) {
+              height = this.getSinglePixelWidth();
+            }
+            var xw = x + width;
+            var yh = y + height;
+            this.ctx.moveTo(x, y);
+            this.ctx.lineTo(xw, y);
+            this.ctx.lineTo(xw, yh);
+            this.ctx.lineTo(x, yh);
+            this.ctx.lineTo(x, y);
+            this.ctx.closePath();
+            break;
           case OPS.moveTo:
             x = args[j++];
             y = args[j++];
@@ -1016,16 +1038,6 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     },
     closePath: function CanvasGraphics_closePath() {
       this.ctx.closePath();
-    },
-    rectangle: function CanvasGraphics_rectangle(x, y, width, height) {
-      if (width === 0) {
-        width = this.getSinglePixelWidth();
-      }
-      if (height === 0) {
-        height = this.getSinglePixelWidth();
-      }
-
-      this.ctx.rect(x, y, width, height);
     },
     stroke: function CanvasGraphics_stroke(consumePath) {
       consumePath = typeof consumePath !== 'undefined' ? consumePath : true;
@@ -1216,9 +1228,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       // Keeping the font at minimal size and using the fontSizeScale to change
       // the current transformation matrix before the fillText/strokeText.
       // See https://bugzilla.mozilla.org/show_bug.cgi?id=726227
-      var browserFontSize = size >= MIN_FONT_SIZE ? size : MIN_FONT_SIZE;
-      this.current.fontSizeScale = browserFontSize != MIN_FONT_SIZE ? 1.0 :
-                                   size / MIN_FONT_SIZE;
+      var browserFontSize = size < MIN_FONT_SIZE ? MIN_FONT_SIZE :
+                            size > MAX_FONT_SIZE ? MAX_FONT_SIZE : size;
+      this.current.fontSizeScale = size / browserFontSize;
 
       var rule = italic + ' ' + bold + ' ' + browserFontSize + 'px ' + typeface;
       this.ctx.font = rule;
@@ -1363,7 +1375,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         lineWidth /= scale;
       }
 
-      if (fontSizeScale != 1.0) {
+      if (fontSizeScale !== 1.0) {
         ctx.scale(fontSizeScale, fontSizeScale);
         lineWidth /= fontSizeScale;
       }
@@ -1453,9 +1465,11 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       var textHScale = current.textHScale * fontDirection;
       var fontMatrix = current.fontMatrix || FONT_IDENTITY_MATRIX;
       var glyphsLength = glyphs.length;
+      var isTextInvisible =
+        current.textRenderingMode === TextRenderingMode.INVISIBLE;
       var i, glyph, width;
 
-      if (fontSize === 0) {
+      if (isTextInvisible || fontSize === 0) {
         return;
       }
 
@@ -1463,7 +1477,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       ctx.transform.apply(ctx, current.textMatrix);
       ctx.translate(current.x, current.y);
 
-      ctx.scale(textHScale, 1);
+      ctx.scale(textHScale, fontDirection);
 
       for (i = 0; i < glyphsLength; ++i) {
         glyph = glyphs[i];
@@ -1479,16 +1493,21 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           continue;
         }
 
+        var operatorList = font.charProcOperatorList[glyph.operatorListId];
+        if (!operatorList) {
+          warn('Type3 character \"' + glyph.operatorListId +
+               '\" is not available');
+          continue;
+        }
         this.processingType3 = glyph;
         this.save();
         ctx.scale(fontSize, fontSize);
         ctx.transform.apply(ctx, fontMatrix);
-        var operatorList = font.charProcOperatorList[glyph.operatorListId];
         this.executeOperatorList(operatorList);
         this.restore();
 
         var transformed = Util.applyTransform([glyph.width, 0], fontMatrix);
-        width = ((transformed[0] * fontSize + charSpacing) * fontDirection);
+        width = transformed[0] * fontSize + charSpacing;
 
         ctx.translate(width, 0);
         current.x += width * textHScale;
@@ -1510,7 +1529,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
                                                                         ury) {
       // TODO According to the spec we're also suppose to ignore any operators
       // that set color or include images while processing this type3 font.
-      this.rectangle(llx, lly, urx - llx, ury - lly);
+      this.ctx.rect(llx, lly, urx - llx, ury - lly);
       this.clip();
       this.endPath();
     },
@@ -1603,7 +1622,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       if (isArray(bbox) && 4 === bbox.length) {
         var width = bbox[2] - bbox[0];
         var height = bbox[3] - bbox[1];
-        this.rectangle(bbox[0], bbox[1], width, height);
+        this.ctx.rect(bbox[0], bbox[1], width, height);
         this.clip();
         this.endPath();
       }
@@ -1755,7 +1774,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       if (isArray(rect) && 4 === rect.length) {
         var width = rect[2] - rect[0];
         var height = rect[3] - rect[1];
-        this.rectangle(rect[0], rect[1], width, height);
+        this.ctx.rect(rect[0], rect[1], width, height);
         this.clip();
         this.endPath();
       }

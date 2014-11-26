@@ -67,7 +67,7 @@ var WebGLUtils = (function WebGLUtilsClosure() {
   }
 
   var currentGL, currentCanvas;
-  function generageGL() {
+  function generateGL() {
     if (currentGL) {
       return;
     }
@@ -125,7 +125,7 @@ var WebGLUtils = (function WebGLUtilsClosure() {
   function initSmaskGL() {
     var canvas, gl;
 
-    generageGL();
+    generateGL();
     canvas = currentCanvas;
     currentCanvas = null;
     gl = currentGL;
@@ -257,7 +257,7 @@ var WebGLUtils = (function WebGLUtilsClosure() {
   function initFiguresGL() {
     var canvas, gl;
 
-    generageGL();
+    generateGL();
     canvas = currentCanvas;
     currentCanvas = null;
     gl = currentGL;
@@ -406,6 +406,14 @@ var WebGLUtils = (function WebGLUtilsClosure() {
   }
 
   function cleanup() {
+    if (smaskCache && smaskCache.canvas) {
+      smaskCache.canvas.width = 0;
+      smaskCache.canvas.height = 0;
+    }
+    if (figuresCache && figuresCache.canvas) {
+      figuresCache.canvas.width = 0;
+      figuresCache.canvas.height = 0;
+    }
     smaskCache = null;
     figuresCache = null;
   }
@@ -417,7 +425,7 @@ var WebGLUtils = (function WebGLUtilsClosure() {
       }
       var enabled = false;
       try {
-        generageGL();
+        generateGL();
         enabled = !!currentGL;
       } catch (e) { }
       return shadow(this, 'isEnabled', enabled);
