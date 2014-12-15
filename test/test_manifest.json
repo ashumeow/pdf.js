@@ -499,6 +499,15 @@
        "link": false,
        "type": "eq"
     },
+    {  "id": "issue5509",
+       "file": "pdfs/issue5509.pdf",
+       "md5": "1975ef8db7355b1d691bc79d0749574b",
+       "rounds": 1,
+       "link": true,
+       "firstPage": 1,
+       "lastPage": 1,
+       "type": "load"
+    },
     {  "id": "txt2pdf",
        "file": "pdfs/txt2pdf.pdf",
        "md5": "02cefa0f5e8d96313bb05163b2f88c8c",
@@ -1040,6 +1049,15 @@
       "link": true,
       "type": "eq"
     },
+    {  "id": "bug1064894",
+       "file": "pdfs/bug1064894.pdf",
+       "md5": "22971b6a24912bca9c773379c10ef18a",
+       "rounds": 1,
+       "link": true,
+       "firstPage": 1,
+       "lastPage": 1,
+       "type": "eq"
+    },
     {  "id": "bug1065245",
        "file": "pdfs/bug1065245.pdf",
        "md5": "844b3af0a1d338a2e1bbe742f474bbb7",
@@ -1505,6 +1523,15 @@
       "lastPage": 1,
       "type": "eq",
       "about": "Type3 font with negative HScale and font size"
+    },
+    {  "id": "bug1108753",
+       "file": "pdfs/bug1108753.pdf",
+       "md5": "a7aaf92d55b4602afb0ca3d75198b56b",
+       "rounds": 1,
+       "link": true,
+       "firstPage": 1,
+       "lastPage": 1,
+       "type": "eq"
     },
     {  "id": "bug816075",
       "file": "pdfs/bug816075.pdf",
